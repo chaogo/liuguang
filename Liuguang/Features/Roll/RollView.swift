@@ -2,8 +2,12 @@ import SwiftUI
 import SwiftData
 
 struct RollView: View {
-    @Query(filter: #Predicate<Photo> { $0.statusRaw == "developed" },
-           sort: \Photo.capturedAt, order: .reverse)
+    @Query(
+        filter: #Predicate<Photo> {
+            $0.statusRaw == "developed" && $0.developedPath != nil
+        },
+        sort: \Photo.capturedAt, order: .reverse
+    )
     private var photos: [Photo]
 
     private let columns = [

@@ -146,6 +146,10 @@ final class InMemoryPhotoStorage: PhotoStorage {
         return developedURL(for: id)
     }
 
+    func developedExists(at path: String) -> Bool {
+        writtenDeveloped.contains { developedURL(for: $0.key).path == path }
+    }
+
     func delete(id: UUID) throws {
         writtenRaw.removeValue(forKey: id)
         writtenDeveloped.removeValue(forKey: id)

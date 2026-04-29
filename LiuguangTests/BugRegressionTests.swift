@@ -86,6 +86,40 @@ final class BugRegressionTests: XCTestCase {
         XCTAssertEqual(developedCount, 1, "the second photo should still develop after the first throws")
     }
 
+    // Bug C: a photo persisted as .developed whose preview file is missing
+    // must not stay in the Roll as a previewless ghost — it should be reset
+    // so the next pass re-renders from the raw.
+    @MainActor
+    func testDevelopedPhotoMissingFileGetsReconciled() async throws {
+        let renderer = NoopRenderer()
+        renderer.output = Data([0xCA, 0xFE])
+        let service = DevelopmentService(renderer: renderer, storage: storage, clock: clock)
+
+        let id = UUID()
+        _ = try storage.saveRaw(Data([1]), id: id)
+        // Simulate a photo persisted as developed but whose file is missing
+        // from storage (e.g. produced by an earlier crashy code path).
+        let photo = Photo(
+            id: id,
+            rawPath: storage.rawURL(for: id).path,
+            capturedAt: clock.now,
+            developsAt: clock.now.addingTimeInterval(-3600),
+            filmProfileID: "portra400",
+            status: .developed
+        )
+        photo.developedPath = "/mem/\(id.uuidString)_dev.jpg"
+        context.insert(photo)
+        try context.save()
+
+        _ = try await service.developReadyPhotos(in: context)
+
+        XCTAssertEqual(photo.status, .developed,
+                       "the orphan should be re-developed in the same pass")
+        XCTAssertNotNil(photo.developedPath)
+        XCTAssertEqual(storage.writtenDeveloped[id], Data([0xCA, 0xFE]),
+                       "re-render should produce a real preview file")
+    }
+    
     // After Bug B is fixed, the failed photo must not be left stuck in
     // `.developing` — otherwise the Darkroom row sticks at 00:00:00 forever.
     @MainActor

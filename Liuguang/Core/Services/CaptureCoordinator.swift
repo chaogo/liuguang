@@ -16,7 +16,7 @@ final class CaptureCoordinator {
         limitService: CaptureLimitService,
         notifications: NotificationService,
         clock: Clock,
-        developmentDelay: TimeInterval = 24 * 60 * 60
+        developmentDelay: TimeInterval = 30
     ) {
         self.camera = camera
         self.storage = storage

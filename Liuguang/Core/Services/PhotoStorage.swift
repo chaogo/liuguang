@@ -6,6 +6,7 @@ protocol PhotoStorage {
     func rawURL(for id: UUID) -> URL
     func developedURL(for id: UUID) -> URL
     func saveDeveloped(_ data: Data, id: UUID) throws -> URL
+    func developedExists(at path: String) -> Bool
     func delete(id: UUID) throws
 }
 
@@ -49,6 +50,10 @@ struct FileSystemPhotoStorage: PhotoStorage {
         let url = developedURL(for: id)
         try data.write(to: url, options: .atomic)
         return url
+    }
+
+    func developedExists(at path: String) -> Bool {
+        FileManager.default.fileExists(atPath: path)
     }
 
     func delete(id: UUID) throws {

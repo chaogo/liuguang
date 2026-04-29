@@ -15,6 +15,8 @@ final class DevelopmentService {
 
     @discardableResult
     func developReadyPhotos(in context: ModelContext) async throws -> Int {
+        var sawChanges = reconcileOrphanedDeveloped(in: context)
+
         let now = clock.now
         let descriptor = FetchDescriptor<Photo>(
             predicate: #Predicate { $0.statusRaw != "developed" }
@@ -22,7 +24,6 @@ final class DevelopmentService {
         let candidates = try context.fetch(descriptor)
         var processed = 0
 
-        var sawChanges = false
         for photo in candidates where photo.developsAt <= now {
             do {
                 try await develop(photo)
@@ -38,6 +39,26 @@ final class DevelopmentService {
         return processed
     }
 
+    /// Photos marked .developed whose preview file is missing (or whose
+    /// developedPath was never persisted) cannot be displayed. Reset them
+    /// so the next pass re-renders from the raw file.
+    private func reconcileOrphanedDeveloped(in context: ModelContext) -> Bool {
+        let descriptor = FetchDescriptor<Photo>(
+            predicate: #Predicate { $0.statusRaw == "developed" }
+        )
+        guard let developed = try? context.fetch(descriptor) else { return false }
+        var changed = false
+        for photo in developed {
+            if let path = photo.developedPath, storage.developedExists(at: path) {
+                continue
+            }
+            photo.developedPath = nil
+            photo.status = .queued
+            changed = true
+        }
+        return changed
+    }
+    
     func develop(_ photo: Photo) async throws {
         photo.status = .developing
 

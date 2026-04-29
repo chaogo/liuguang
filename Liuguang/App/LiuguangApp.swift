@@ -16,21 +16,9 @@ struct LiuguangApp: App {
             RootView()
                 .task {
                     _ = await SystemNotificationService().requestAuthorization()
-                    await developReady()
                     BackgroundDevelopmentScheduler.submitNextRequest()
                 }
         }
         .modelContainer(container)
-    }
-
-    @MainActor
-    private func developReady() async {
-        let context = ModelContext(container)
-        let service = DevelopmentService(
-            renderer: FilmGrainRenderer(),
-            storage: FileSystemPhotoStorage(),
-            clock: SystemClock()
-        )
-        _ = try? await service.developReadyPhotos(in: context)
     }
 }
